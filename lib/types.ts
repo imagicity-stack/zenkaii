@@ -43,3 +43,6 @@ export type Cart = {
 };
 
 export const EMPTY_CART: Cart = { id: null, checkoutUrl: null, lines: [], subtotal: 0, currency: "USD" };
+
+// Shopify-hosted pages linked from the footer (empty when no store is connected).
+export type ShopLinks = { shipping?: string; account?: string };

@@ -36,6 +36,21 @@ Shopify doesn't let a headless site take card details, so the drawer's SHIP → 
 
 Tax and shipping are calculated by Shopify at checkout, so the drawer shows "AT CHECKOUT" for tribute.
 
+### URLs
+
+The storefront is still one scrolling page, but the address bar stays clean:
+
+| URL | What you see |
+| --- | --- |
+| `/` | The whole site. Nav, hero and footer links scroll smoothly to their section without adding a `#hash`. |
+| `/products/<handle>` | The same page with that product's modal open. Opening a tile pushes this URL, and browser back/close returns to `/` at the same scroll position. The link is shareable and has its own title, description, share image, canonical URL and `Product` structured data (price, currency, stock). |
+| `/#shop`, `/#lore`, … | Old-style links still work: they scroll to the section, then the hash is removed. |
+| `/sitemap.xml`, `/robots.txt` | Home plus every product page, for search engines. |
+
+Home and product pages share one persistent layout (`app/(store)/layout.tsx`), so moving between them never reloads the page or empties the cart. Unknown product handles return a 404 and fall back to the home page.
+
+Footer links point at real destinations: sections, category shortcuts (hidden if the live catalogue lacks that category), Shopify's shipping policy and customer account pages when a store is connected, and email otherwise.
+
 ## Local development
 
 ```bash
@@ -94,13 +109,17 @@ The catalogue is cached for 60 seconds (ISR), so product edits show up within a 
 
 ```
 app/
-  layout.tsx            fonts (Cinzel, Zen Kaku Gothic New, Space Mono), metadata
-  page.tsx              fetches products (Shopify or mock) → <Zenkaii>
+  layout.tsx            fonts (Cinzel, Zen Kaku Gothic New, Space Mono), base metadata
+  (store)/layout.tsx    fetches products (Shopify or mock) → <Zenkaii>, persists across routes
+  (store)/page.tsx      home (empty — the layout is the page)
+  (store)/products/[handle]/page.tsx   per-product metadata + JSON-LD; the modal opens from the URL
+  sitemap.ts, robots.ts
   globals.css           all styling + keyframes, ported from the prototype
   api/cart/route.ts     cart create/add/update/get → Storefront API
   api/newsletter/...    newsletter → Admin API customerCreate
 components/
-  Store.tsx             client state: cart sync, drawer, PDP, toast, favourites, motion prefs
+  Store.tsx             client state: cart sync, drawer, URL-driven product modal, sections, toast, favourites, motion prefs
+  SectionLink.tsx       hash-free smooth-scroll links
   Effects.tsx           rAF loop: cursor spirit, petals, speed lines, marquee, parallax, gates, reveals
   Header, Hero, Ticker, FeaturedDrop, Gate, Shop, Editorial (lookbook/lore/UGC), Newsletter, Footer
   ProductModal.tsx, CartDrawer.tsx, Toast.tsx
@@ -109,5 +128,6 @@ lib/
   mock.ts               prototype catalogue
   config.ts             env-driven tweaks
   fx.ts                 tilt + fly-to-cart animations
-  content.ts            editorial copy
+  content.ts            editorial copy, nav + footer links
+  site.ts               site URL, product paths, titles
 ```

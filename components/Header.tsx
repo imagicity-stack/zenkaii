@@ -1,13 +1,14 @@
 "use client";
 
 import { NAV_LINKS } from "@/lib/content";
+import SectionLink from "./SectionLink";
 import { useStore } from "./Store";
 
 export default function Header() {
   const { count, openDrawer, refs } = useStore();
   return (
     <header className="zk-header">
-      <a href="#top" className="zk-brand">
+      <SectionLink to="top" className="zk-brand">
         <div className="zk-brand-mark">
           <img src="/zenkaii-mask.png" alt="Zenkaii" className="zk-fill" />
         </div>
@@ -15,11 +16,11 @@ export default function Header() {
           <span className="zk-brand-name">ZENKAII</span>
           <span className="zk-brand-sub">ゼンカイ / EST. 令和</span>
         </div>
-      </a>
+      </SectionLink>
 
       <nav className="zk-nav" aria-label="Sections">
         {NAV_LINKS.map((l) => (
-          <a key={l.href} href={l.href}>{l.label}</a>
+          <SectionLink key={l.to} to={l.to}>{l.label}</SectionLink>
         ))}
       </nav>
 

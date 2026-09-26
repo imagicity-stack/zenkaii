@@ -14,8 +14,7 @@ const SORTS = [
 ] as const;
 
 export default function Shop() {
-  const { products } = useStore();
-  const [cat, setCat] = useState("ALL");
+  const { products, cat, setCat } = useStore();
   const [sort, setSort] = useState<(typeof SORTS)[number]["id"]>("featured");
 
   const cats = useMemo(() => {

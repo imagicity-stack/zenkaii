@@ -1,5 +1,5 @@
 // Server-side Shopify Storefront API client. Never import this from a client component.
-import type { Cart, CartLine, Product } from "./types";
+import type { Cart, CartLine, Product, ShopLinks } from "./types";
 import { MOCK_PRODUCTS } from "./mock";
 
 const DOMAIN = process.env.SHOPIFY_STORE_DOMAIN?.replace(/^https?:\/\//, "").replace(/\/$/, "");
@@ -234,4 +234,24 @@ export async function subscribeEmail(email: string) {
   // An existing customer is fine — they already took the oath.
   const real = errs.filter((e) => !/taken/i.test(e.message));
   if (real.length) throw new Error(real.map((e) => e.message).join("; "));
+}
+
+// ---------- shop links for the footer ----------
+
+export async function getShopLinks(): Promise<ShopLinks> {
+  if (!shopifyEnabled) return {};
+  try {
+    const d = await storefront<{ shop: { shippingPolicy: { url: string } | null; refundPolicy: { url: string } | null } }>(
+      `query { shop { shippingPolicy { url } refundPolicy { url } } }`,
+      {}, 3600
+    );
+    return {
+      shipping: d.shop.shippingPolicy?.url || d.shop.refundPolicy?.url,
+      // Redirects to the store's customer account login / order history.
+      account: `https://${DOMAIN}/account`,
+    };
+  } catch (err) {
+    console.error("[zenkaii] Shopify shop links fetch failed:", err);
+    return {};
+  }
 }

@@ -1,8 +1,10 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { CONFIG, motionFor, type MotionLevel } from "@/lib/config";
 import { flyToCart, tiltMove, tiltReset } from "@/lib/fx";
+import { HOME_TITLE, productPath, productTitle } from "@/lib/site";
 import { EMPTY_CART, type Cart, type CartLine, type Product } from "@/lib/types";
 
 const CART_KEY = "zk_cart_id";
@@ -29,6 +31,9 @@ type StoreCtx = {
   pdp: Product | null;
   openPdp: (p: Product) => void;
   closePdp: () => void;
+  cat: string;
+  setCat: (c: string) => void;
+  goTo: (section: string, cat?: string) => void;
   fav: Record<string, boolean>;
   toggleFav: (id: string) => void;
   toast: string | null;
@@ -62,7 +67,7 @@ export function StoreProvider({ products, shopify, children }: { products: Produ
   const [drawer, setDrawer] = useState(false);
   const [step, setStep] = useState<Step>(0);
   const [orderNo, setOrderNo] = useState<string | null>(null);
-  const [pdp, setPdp] = useState<Product | null>(null);
+  const [cat, setCat] = useState("ALL");
   const [fav, setFav] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<string | null>(null);
 
@@ -252,8 +257,73 @@ export function StoreProvider({ products, shopify, children }: { products: Produ
     setStep(0);
   }, []);
 
-  const openPdp = useCallback((p: Product) => setPdp(p), []);
-  const closePdp = useCallback(() => setPdp(null), []);
+  // ---------- product URLs ----------
+  // The modal is driven by the URL: /products/<handle> opens it, / closes it. Both routes share
+  // one persistent layout, so history.pushState swaps the URL without a reload or refetch.
+  const pathname = usePathname();
+  const handle = productHandle(pathname);
+  const pdp = useMemo(() => (handle ? products.find((p) => p.handle === handle) || null : null), [handle, products]);
+  const pushedPdp = useRef(false);
+
+  useEffect(() => {
+    if (!handle) pushedPdp.current = false;
+    // Unknown or retired handle: fall back to the home URL rather than leaving a dead path.
+    else if (!pdp) history.replaceState(null, "", "/");
+  }, [handle, pdp]);
+
+  // pushState doesn't run Next's metadata, so keep the tab title in step with the modal.
+  useEffect(() => {
+    document.title = pdp ? productTitle(pdp.name) : HOME_TITLE;
+  }, [pdp]);
+
+  const openPdp = useCallback((p: Product) => {
+    const url = productPath(p.handle);
+    if (productHandle(location.pathname)) history.replaceState(null, "", url);
+    else {
+      history.pushState(null, "", url);
+      pushedPdp.current = true;
+    }
+  }, []);
+
+  const closePdp = useCallback(() => {
+    if (pushedPdp.current) {
+      pushedPdp.current = false;
+      history.back();
+    } else history.replaceState(null, "", "/");
+  }, []);
+
+  // ---------- in-page sections (smooth scroll, no #hash in the address bar) ----------
+  const goTo = useCallback(
+    (section: string, nextCat?: string) => {
+      if (nextCat) setCat(products.some((p) => p.cat === nextCat) ? nextCat : "ALL");
+      if (location.hash || location.pathname !== "/") history.replaceState(null, "", "/");
+      if (section === "top") scrollTo({ top: 0 });
+      else document.getElementById(section)?.scrollIntoView();
+    },
+    [products]
+  );
+
+  // Old /#section links (bookmarks, new tabs, typed hashes) still land on the section,
+  // then the hash is dropped.
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout>;
+    const clean = () => {
+      const id = location.hash.slice(1);
+      if (!id) return;
+      clearTimeout(t);
+      // Wait a tick so the router has finished writing its own history entry.
+      t = setTimeout(() => {
+        document.getElementById(id)?.scrollIntoView({ behavior: "instant" as ScrollBehavior });
+        if (location.hash) history.replaceState(null, "", location.pathname);
+      }, 50);
+    };
+    clean();
+    addEventListener("hashchange", clean);
+    return () => {
+      clearTimeout(t);
+      removeEventListener("hashchange", clean);
+    };
+  }, []);
 
   // Lock page scroll under overlays; Escape closes the top one.
   useEffect(() => {
@@ -263,19 +333,29 @@ export function StoreProvider({ products, shopify, children }: { products: Produ
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       if (drawer) setDrawer(false);
-      else setPdp(null);
+      else closePdp();
     };
     addEventListener("keydown", onKey);
     return () => removeEventListener("keydown", onKey);
-  }, [drawer, pdp]);
+  }, [drawer, pdp, closePdp]);
 
   const count = cart.lines.reduce((a, l) => a + l.qty, 0);
 
   const value: StoreCtx = {
     products, shopify, motion, cart, count, add, setQty,
     drawer, openDrawer, closeDrawer, step, checkout, finish, orderNo,
-    pdp, openPdp, closePdp, fav, toggleFav, toast, say, tilt,
+    pdp, openPdp, closePdp, cat, setCat, goTo, fav, toggleFav, toast, say, tilt,
     refs: { cartBtn, badge, fx },
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+function productHandle(pathname: string | null) {
+  const m = pathname?.match(/^\/products\/([^/]+)\/?$/);
+  if (!m) return null;
+  try {
+    return decodeURIComponent(m[1]);
+  } catch {
+    return m[1];
+  }
 }

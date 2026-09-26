@@ -1,6 +1,6 @@
 "use client";
 
-import type { Product } from "@/lib/types";
+import type { Product, ShopLinks } from "@/lib/types";
 import CartDrawer from "./CartDrawer";
 import { Community, Lookbook, Lore } from "./Editorial";
 import Effects from "./Effects";
@@ -16,7 +16,17 @@ import { StoreProvider } from "./Store";
 import Ticker from "./Ticker";
 import Toast from "./Toast";
 
-export default function Zenkaii({ products, shopify }: { products: Product[]; shopify: boolean }) {
+export default function Zenkaii({
+  products,
+  shopify,
+  links,
+  children,
+}: {
+  products: Product[];
+  shopify: boolean;
+  links: ShopLinks;
+  children?: React.ReactNode;
+}) {
   return (
     <StoreProvider products={products} shopify={shopify}>
       <Effects />
@@ -32,11 +42,12 @@ export default function Zenkaii({ products, shopify }: { products: Product[]; sh
         <Lore />
         <Community />
         <Newsletter />
-        <Footer />
+        <Footer links={links} />
       </main>
       <ProductModal />
       <CartDrawer />
       <Toast />
+      {children}
     </StoreProvider>
   );
 }

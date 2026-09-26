@@ -1,4 +1,5 @@
 import { HERO_STATS } from "@/lib/content";
+import SectionLink from "./SectionLink";
 
 export default function Hero() {
   return (
@@ -30,8 +31,8 @@ export default function Hero() {
           Nine tails, nine oaths. Every garment is struck once, numbered, and sealed with the fox&apos;s mark — then the mould is broken. What passes the gate does not return.
         </p>
         <div className="zk-hero-ctas">
-          <a href="#shop" className="zk-btn-ivory">ENTER THE SHRINE</a>
-          <a href="#lore" className="zk-btn-ghost">READ THE OATH</a>
+          <SectionLink to="shop" className="zk-btn-ivory">ENTER THE SHRINE</SectionLink>
+          <SectionLink to="lore" className="zk-btn-ghost">READ THE OATH</SectionLink>
         </div>
         <div className="zk-hero-stats">
           {HERO_STATS.map((s) => (
