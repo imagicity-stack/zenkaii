@@ -868,6 +868,45 @@ section[id] { scroll-margin-top: 72px; }
 }
 .zk-pdp-chars a:hover { color: var(--ivory); background: hsl(var(--hue) 75% 45% / 0.36); }
 
+/* ---------- desktop hero banner (hidden on mobile, where For You leads) ---------- */
+.zk-herob { position: relative; height: min(82vh, 43vw); min-height: 460px; overflow: hidden; background: var(--ink); }
+.zk-herob-art { position: absolute; inset: -4% 0; will-change: transform; }
+.zk-herob-art img {
+  width: 100%; height: 100%; object-fit: cover; object-position: 50% 32%; display: block; user-select: none;
+  animation: zk-herob-in 14s cubic-bezier(.2, .7, .2, 1) both;
+}
+@keyframes zk-herob-in { from { transform: scale(1.08); filter: saturate(1.25) brightness(.8); } to { transform: scale(1); filter: none; } }
+.zk-herob-shade {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(8, 7, 10, 0.55) 0%, rgba(8, 7, 10, 0) 22%),
+    linear-gradient(0deg, var(--ink) 0%, rgba(8, 7, 10, 0.86) 14%, rgba(8, 7, 10, 0.25) 36%, rgba(8, 7, 10, 0) 52%),
+    radial-gradient(ellipse 46% 40% at 16% 96%, rgba(8, 7, 10, 0.7), transparent 70%);
+}
+.zk-herob-copy {
+  position: absolute; left: 0; right: 0; bottom: clamp(20px, 2.6vw, 44px); padding: 0 var(--gutter);
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 24px 40px; flex-wrap: wrap;
+}
+.zk-herob-eyebrow { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.36em; color: var(--ivory); text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9); }
+.zk-herob-eyebrow span { width: 10px; height: 10px; background: var(--crimson-hi); transform: rotate(45deg); animation: zk-breathe 2.4s ease-in-out infinite; }
+.zk-herob-title {
+  margin: 0; font-family: var(--serif); font-weight: 900; font-size: clamp(34px, 4.3vw, 84px); line-height: 0.9; letter-spacing: 0.02em; white-space: nowrap;
+  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.85);
+}
+.zk-herob-title span { color: var(--crimson-hi); text-shadow: 0 0 40px rgba(232, 50, 74, 0.6), 0 4px 30px rgba(0, 0, 0, 0.85); }
+.zk-herob-ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+@media (max-width: 1180px) {
+  .zk-herob-ctas .zk-btn-ivory, .zk-herob-ctas .zk-btn-ghost { padding: 14px 22px; font-size: 10.5px; letter-spacing: 0.22em; }
+  .zk-herob-eyebrow { margin-bottom: 10px; }
+}
+.zk-herob-ctas .zk-btn-ghost { background: rgba(8, 7, 10, 0.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+@media (min-width: 761px) {
+  .zk-herob + .zk-foryou { padding-top: clamp(26px, 3vw, 44px); }
+  .zk-herob + .zk-foryou .zk-foryou-glow { display: none; }
+}
+@media (max-width: 760px) { .zk-herob { display: none; } }
+@media (prefers-reduced-motion: reduce) { .zk-herob-art img, .zk-herob-eyebrow span { animation: none; } }
+
 /* ---------- reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

@@ -3,6 +3,7 @@
 import { Community, Lookbook, Lore } from "./Editorial";
 import FeaturedDrop from "./FeaturedDrop";
 import ForYou from "./ForYou";
+import HeroBanner from "./HeroBanner";
 import Gate from "./Gate";
 import Newsletter from "./Newsletter";
 import ProductRails from "./ProductRails";
@@ -13,6 +14,7 @@ import Ticker from "./Ticker";
 export default function HomeView() {
   return (
     <>
+      <HeroBanner />
       <ForYou />
       <Ticker />
       <ProductRails />
