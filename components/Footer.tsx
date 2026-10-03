@@ -1,6 +1,29 @@
-import { FOOTER_COLS } from "@/lib/content";
+"use client";
 
-export default function Footer() {
+import { CONTACT_EMAIL, FOOTER_COLS, type FooterLink } from "@/lib/content";
+import type { ShopLinks } from "@/lib/types";
+import SectionLink from "./SectionLink";
+import { useStore } from "./Store";
+
+export default function Footer({ links }: { links: ShopLinks }) {
+  const { products } = useStore();
+
+  const render = (l: FooterLink) => {
+    if (l.section) {
+      // Skip category shortcuts the live catalogue doesn't carry.
+      if (l.cat && l.cat !== "ALL" && !products.some((p) => p.cat === l.cat)) return null;
+      return <SectionLink key={l.label} to={l.section} cat={l.cat}>{l.label}</SectionLink>;
+    }
+    // Without a connected store, Shopify-hosted pages fall back to email.
+    const href = (l.shop && links[l.shop]) || l.href || `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(l.label)}`;
+    const external = href.startsWith("http");
+    return (
+      <a key={l.label} href={href} {...(external ? { target: "_blank", rel: "noopener" } : {})}>
+        {l.label}
+      </a>
+    );
+  };
+
   return (
     <footer className="zk-footer">
       <div className="zk-footer-grid">
@@ -14,11 +37,7 @@ export default function Footer() {
         {FOOTER_COLS.map((f) => (
           <div key={f.head}>
             <div className="zk-footer-head">{f.head}</div>
-            <div className="zk-footer-links">
-              {f.links.map((lk) => (
-                <a key={lk} href={lk.includes("@") ? "mailto:" + lk : "#top"}>{lk}</a>
-              ))}
-            </div>
+            <div className="zk-footer-links">{f.links.map(render)}</div>
           </div>
         ))}
       </div>

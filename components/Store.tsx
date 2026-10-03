@@ -1,18 +1,34 @@
 "use client";
 
+import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { CONFIG, motionFor, type MotionLevel } from "@/lib/config";
 import { flyToCart, tiltMove, tiltReset } from "@/lib/fx";
-import { EMPTY_CART, type Cart, type CartLine, type Product } from "@/lib/types";
+import { collectionTitle, HOME_TITLE, productPath, productTitle } from "@/lib/site";
+import { EMPTY_CART, type Cart, type CartLine, type Character, type Product } from "@/lib/types";
 
 const CART_KEY = "zk_cart_id";
 const PENDING_KEY = "zk_checkout_pending";
+const RECENT_MAX = 12;
+
+function loadJson<T>(key: string, fallback: T): T {
+  try {
+    const v = localStorage.getItem(key);
+    return v ? (JSON.parse(v) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+function saveJson(key: string, v: unknown) {
+  try { localStorage.setItem(key, JSON.stringify(v)); } catch {}
+}
 
 // 0 cart · 1 redirecting to Shopify checkout · 3 sealed (step 2, payment, happens on Shopify)
 export type Step = 0 | 1 | 3;
 
 type StoreCtx = {
   products: Product[];
+  characters: Character[];
   shopify: boolean;
   motion: ReturnType<typeof motionFor> & { level: MotionLevel; cursor: boolean; reduced: boolean };
   cart: Cart;
@@ -29,14 +45,26 @@ type StoreCtx = {
   pdp: Product | null;
   openPdp: (p: Product) => void;
   closePdp: () => void;
+  cat: string;
+  setCat: (c: string) => void;
+  goTo: (section: string, cat?: string) => void;
   fav: Record<string, boolean>;
   toggleFav: (id: string) => void;
+  followed: Record<string, boolean>;
+  toggleFollow: (c: Character) => void;
+  recent: string[];
+  search: boolean;
+  openSearch: () => void;
+  closeSearch: () => void;
   toast: string | null;
   say: (msg: string, ms?: number) => void;
   tilt: { onMouseMove: (e: React.MouseEvent<HTMLElement>) => void; onMouseLeave: (e: React.MouseEvent<HTMLElement>) => void };
   refs: {
     cartBtn: React.RefObject<HTMLButtonElement | null>;
     badge: React.RefObject<HTMLSpanElement | null>;
+    // The mobile tab bar has its own cart button; fly-to-cart aims at whichever is visible.
+    cartBtnMobile: React.RefObject<HTMLButtonElement | null>;
+    badgeMobile: React.RefObject<HTMLSpanElement | null>;
     fx: React.RefObject<HTMLDivElement | null>;
   };
 };
@@ -56,18 +84,34 @@ async function cartApi(body: Record<string, unknown>): Promise<Cart | null> {
   return json.cart;
 }
 
-export function StoreProvider({ products, shopify, children }: { products: Product[]; shopify: boolean; children: React.ReactNode }) {
+export function StoreProvider({
+  products,
+  characters,
+  shopify,
+  children,
+}: {
+  products: Product[];
+  characters: Character[];
+  shopify: boolean;
+  children: React.ReactNode;
+}) {
+  const router = useRouter();
   const [reduced, setReduced] = useState(false);
   const [cart, setCart] = useState<Cart>(EMPTY_CART);
   const [drawer, setDrawer] = useState(false);
   const [step, setStep] = useState<Step>(0);
   const [orderNo, setOrderNo] = useState<string | null>(null);
-  const [pdp, setPdp] = useState<Product | null>(null);
+  const [cat, setCat] = useState("ALL");
   const [fav, setFav] = useState<Record<string, boolean>>({});
+  const [followed, setFollowed] = useState<Record<string, boolean>>({});
+  const [recent, setRecent] = useState<string[]>([]);
+  const [search, setSearch] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   const cartBtn = useRef<HTMLButtonElement>(null);
   const badge = useRef<HTMLSpanElement>(null);
+  const cartBtnMobile = useRef<HTMLButtonElement>(null);
+  const badgeMobile = useRef<HTMLSpanElement>(null);
   const fx = useRef<HTMLDivElement>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const serverCart = useRef<Cart>(EMPTY_CART);
@@ -101,20 +145,29 @@ export function StoreProvider({ products, shopify, children }: { products: Produ
     [motion.tilt]
   );
 
-  // ---------- favourites persist per browser ----------
+  // ---------- favourites, followed characters, recently viewed (per browser) ----------
   useEffect(() => {
-    try {
-      const f = localStorage.getItem("zk_fav");
-      if (f) setFav(JSON.parse(f));
-    } catch {}
+    setFav(loadJson("zk_fav", {}));
+    setFollowed(loadJson("zk_follow", {}));
+    setRecent(loadJson<string[]>("zk_recent", []));
   }, []);
   const toggleFav = useCallback((id: string) => {
     setFav((s) => {
       const next = { ...s, [id]: !s[id] };
-      try { localStorage.setItem("zk_fav", JSON.stringify(next)); } catch {}
+      saveJson("zk_fav", next);
       return next;
     });
   }, []);
+  const toggleFollow = useCallback(
+    (c: Character) => {
+      const on = !followed[c.handle];
+      const next = { ...followed, [c.handle]: on };
+      setFollowed(next);
+      saveJson("zk_follow", next);
+      say((on ? "FOLLOWING " : "UNFOLLOWED ") + c.name.toUpperCase(), 1800);
+    },
+    [followed, say]
+  );
 
   // ---------- Shopify cart sync ----------
   const commit = useCallback((c: Cart | null) => {
@@ -189,7 +242,8 @@ export function StoreProvider({ products, shopify, children }: { products: Produ
       };
       setCart(optimistic);
       if (shopify) run(() => cartApi({ action: "add", cartId: serverCart.current.id, merchandiseId: variant.id }));
-      flyToCart(origin || null, cartBtn.current, badge.current, fx.current);
+      const mobile = !!cartBtnMobile.current?.getClientRects().length;
+      flyToCart(origin || null, mobile ? cartBtnMobile.current : cartBtn.current, mobile ? badgeMobile.current : badge.current, fx.current);
       say(p.name.toUpperCase() + " — BOUND");
     },
     [shopify, run, say]
@@ -243,6 +297,7 @@ export function StoreProvider({ products, shopify, children }: { products: Produ
   }, []);
 
   const openDrawer = useCallback(() => {
+    setSearch(false);
     setStep((s) => (s === 3 ? 0 : s));
     setDrawer(true);
   }, []);
@@ -252,30 +307,133 @@ export function StoreProvider({ products, shopify, children }: { products: Produ
     setStep(0);
   }, []);
 
-  const openPdp = useCallback((p: Product) => setPdp(p), []);
-  const closePdp = useCallback(() => setPdp(null), []);
+  // ---------- product URLs ----------
+  // The modal is driven by the URL: /products/<handle> opens it, / closes it. Both routes share
+  // one persistent layout, so history.pushState swaps the URL without a reload or refetch.
+  const pathname = usePathname();
+  const handle = productHandle(pathname);
+  const pdp = useMemo(() => (handle ? products.find((p) => p.handle === handle) || null : null), [handle, products]);
+  const pushedPdp = useRef(false);
+
+  useEffect(() => {
+    if (!handle) pushedPdp.current = false;
+    // Unknown or retired handle: fall back to the home page rather than leaving a dead path.
+    else if (!pdp) router.replace("/");
+  }, [handle, pdp, router]);
+
+  // pushState doesn't run Next's metadata, so keep the tab title in step with the modal.
+  useEffect(() => {
+    if (pdp) document.title = productTitle(pdp.name);
+    else if (pathname === "/") document.title = HOME_TITLE;
+    else {
+      const c = characters.find((x) => pathname === "/collections/" + encodeURIComponent(x.handle));
+      if (c) document.title = collectionTitle(c.name);
+    }
+  }, [pdp, pathname, characters]);
+
+  // Remember what was opened for the "Pick up the trail" row.
+  useEffect(() => {
+    if (!pdp) return;
+    setRecent((r) => {
+      const next = [pdp.id, ...r.filter((id) => id !== pdp.id)].slice(0, RECENT_MAX);
+      saveJson("zk_recent", next);
+      return next;
+    });
+  }, [pdp]);
+
+  const openPdp = useCallback((p: Product) => {
+    setSearch(false);
+    const url = productPath(p.handle);
+    if (productHandle(location.pathname)) history.replaceState(null, "", url);
+    else {
+      history.pushState(null, "", url);
+      pushedPdp.current = true;
+    }
+  }, []);
+
+  const closePdp = useCallback(() => {
+    if (pushedPdp.current) {
+      pushedPdp.current = false;
+      history.back();
+    } else history.replaceState(null, "", "/");
+  }, []);
+
+  // ---------- in-page sections (smooth scroll, no #hash in the address bar) ----------
+  const goTo = useCallback(
+    (section: string, nextCat?: string) => {
+      if (nextCat) setCat(products.some((p) => p.cat === nextCat) ? nextCat : "ALL");
+      setSearch(false);
+      const el = section === "top" ? null : document.getElementById(section);
+      const onHome = location.pathname === "/" || !!productHandle(location.pathname);
+      // Sections live on the home page; from a character page, navigate home first.
+      if (!onHome || (section !== "top" && !el)) {
+        router.push(section === "top" ? "/" : "/#" + section);
+        return;
+      }
+      if (location.hash || location.pathname !== "/") history.replaceState(null, "", "/");
+      if (section === "top") scrollTo({ top: 0 });
+      else el?.scrollIntoView();
+    },
+    [products, router]
+  );
+
+  // Old /#section links (bookmarks, new tabs, typed hashes) still land on the section,
+  // then the hash is dropped.
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout>;
+    const clean = () => {
+      if (!location.hash) return;
+      clearTimeout(t);
+      // The browser / router already scroll to the anchor; once they have written their own
+      // history entry, just drop the hash from the address bar.
+      t = setTimeout(() => {
+        if (location.hash) history.replaceState(null, "", location.pathname);
+      }, 160);
+    };
+    clean();
+    addEventListener("hashchange", clean);
+    return () => {
+      clearTimeout(t);
+      removeEventListener("hashchange", clean);
+    };
+  }, [pathname]);
+
+  const openSearch = useCallback(() => setSearch(true), []);
+  const closeSearch = useCallback(() => setSearch(false), []);
 
   // Lock page scroll under overlays; Escape closes the top one.
   useEffect(() => {
-    const locked = drawer || !!pdp;
+    const locked = drawer || !!pdp || search;
     document.documentElement.style.overflow = locked ? "hidden" : "";
     if (!locked) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       if (drawer) setDrawer(false);
-      else setPdp(null);
+      else if (pdp) closePdp();
+      else setSearch(false);
     };
     addEventListener("keydown", onKey);
     return () => removeEventListener("keydown", onKey);
-  }, [drawer, pdp]);
+  }, [drawer, pdp, search, closePdp]);
 
   const count = cart.lines.reduce((a, l) => a + l.qty, 0);
 
   const value: StoreCtx = {
-    products, shopify, motion, cart, count, add, setQty,
+    products, characters, shopify, motion, cart, count, add, setQty,
     drawer, openDrawer, closeDrawer, step, checkout, finish, orderNo,
-    pdp, openPdp, closePdp, fav, toggleFav, toast, say, tilt,
-    refs: { cartBtn, badge, fx },
+    pdp, openPdp, closePdp, cat, setCat, goTo, fav, toggleFav, followed, toggleFollow, recent,
+    search, openSearch, closeSearch, toast, say, tilt,
+    refs: { cartBtn, badge, cartBtnMobile, badgeMobile, fx },
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+function productHandle(pathname: string | null) {
+  const m = pathname?.match(/^\/products\/([^/]+)\/?$/);
+  if (!m) return null;
+  try {
+    return decodeURIComponent(m[1]);
+  } catch {
+    return m[1];
+  }
 }

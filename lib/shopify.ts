@@ -1,6 +1,7 @@
 // Server-side Shopify Storefront API client. Never import this from a client component.
-import type { Cart, CartLine, Product } from "./types";
+import { CHARACTER_ART, hueFor, MOCK_CHARACTERS } from "./characters";
 import { MOCK_PRODUCTS } from "./mock";
+import type { Cart, CartLine, Character, Product, ShopLinks } from "./types";
 
 const DOMAIN = process.env.SHOPIFY_STORE_DOMAIN?.replace(/^https?:\/\//, "").replace(/\/$/, "");
 const TOKEN = process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN;
@@ -102,6 +103,66 @@ export async function getProducts(): Promise<Product[]> {
   } catch (err) {
     console.error("[zenkaii] Shopify product fetch failed, falling back to mock catalogue:", err);
     return MOCK_PRODUCTS;
+  }
+}
+
+// ---------- character collections ----------
+// Collections become carousel characters. Flag the ones to show with the boolean metafield
+// custom.character = true (if none are flagged, every non-system collection is used).
+// Optional metafields: custom.jp_name, custom.tagline, custom.genres ("A, B"), custom.badge,
+// custom.ribbon, custom.year, custom.order (number, lowest first).
+
+type ShopifyCollection = {
+  id: string; handle: string; title: string; description: string;
+  image: { url: string; altText: string | null } | null;
+  character: { value: string } | null; jp: { value: string } | null; tagline: { value: string } | null;
+  genres: { value: string } | null; badge: { value: string } | null; ribbon: { value: string } | null;
+  year: { value: string } | null; order: { value: string } | null;
+  products: { nodes: { id: string }[] };
+};
+
+const SYSTEM_COLLECTIONS = new Set(["all", "frontpage", "home-page"]);
+
+function mapCollection(c: ShopifyCollection): Character {
+  const art = CHARACTER_ART[c.handle];
+  const jp = c.jp?.value || "";
+  return {
+    id: c.id,
+    handle: c.handle,
+    name: c.title,
+    jp,
+    tagline: c.tagline?.value || "",
+    description: c.description,
+    genres: (c.genres?.value || "").split(",").map((g) => g.trim()).filter(Boolean),
+    year: c.year?.value || String(new Date().getFullYear()),
+    badge: c.badge?.value || null,
+    ribbon: c.ribbon?.value || null,
+    image: art ? { url: art, alt: c.title } : c.image ? { url: c.image.url, alt: c.image.altText || c.title } : null,
+    hue: hueFor(c.handle),
+    glyph: jp.charAt(0) || c.title.charAt(0).toUpperCase(),
+    productIds: c.products.nodes.map((n) => n.id),
+  };
+}
+
+export async function getCharacters(): Promise<Character[]> {
+  if (!shopifyEnabled) return MOCK_CHARACTERS;
+  try {
+    const mf = (k: string) => `${k}: metafield(namespace: "custom", key: "${k === "jp" ? "jp_name" : k}") { value }`;
+    const d = await storefront<{ collections: { nodes: ShopifyCollection[] } }>(
+      `query { collections(first: 100) { nodes {
+        id handle title description image { url altText }
+        ${["character", "jp", "tagline", "genres", "badge", "ribbon", "year", "order"].map(mf).join(" ")}
+        products(first: 100) { nodes { id } }
+      } } }`,
+      {}, 60
+    );
+    const all = d.collections.nodes.filter((c) => !SYSTEM_COLLECTIONS.has(c.handle) && c.handle !== COLLECTION);
+    const flagged = all.filter((c) => c.character?.value === "true");
+    const order = (c: ShopifyCollection) => (c.order?.value && !isNaN(+c.order.value) ? +c.order.value : 1e9);
+    return (flagged.length ? flagged : all).sort((a, b) => order(a) - order(b)).map(mapCollection);
+  } catch (err) {
+    console.error("[zenkaii] Shopify collections fetch failed:", err);
+    return [];
   }
 }
 
@@ -234,4 +295,24 @@ export async function subscribeEmail(email: string) {
   // An existing customer is fine — they already took the oath.
   const real = errs.filter((e) => !/taken/i.test(e.message));
   if (real.length) throw new Error(real.map((e) => e.message).join("; "));
+}
+
+// ---------- shop links for the footer ----------
+
+export async function getShopLinks(): Promise<ShopLinks> {
+  if (!shopifyEnabled) return {};
+  try {
+    const d = await storefront<{ shop: { shippingPolicy: { url: string } | null; refundPolicy: { url: string } | null } }>(
+      `query { shop { shippingPolicy { url } refundPolicy { url } } }`,
+      {}, 3600
+    );
+    return {
+      shipping: d.shop.shippingPolicy?.url || d.shop.refundPolicy?.url,
+      // Redirects to the store's customer account login / order history.
+      account: `https://${DOMAIN}/account`,
+    };
+  } catch (err) {
+    console.error("[zenkaii] Shopify shop links fetch failed:", err);
+    return {};
+  }
 }

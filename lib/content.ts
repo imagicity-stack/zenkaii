@@ -1,15 +1,10 @@
 export const NAV_LINKS = [
-  { label: "DROP", href: "#drop" },
-  { label: "SHOP", href: "#shop" },
-  { label: "LOOKBOOK", href: "#lookbook" },
-  { label: "LORE", href: "#lore" },
-  { label: "WEARERS", href: "#community" },
-];
-
-export const HERO_STATS = [
-  { v: "009", k: "DROPS SEALED" },
-  { v: "14.2K", k: "MASKED" },
-  { v: "1/1", k: "NEVER RESTRUCK" },
+  { label: "FOR YOU", to: "foryou" },
+  { label: "DROP", to: "drop" },
+  { label: "SHOP", to: "shop" },
+  { label: "LOOKBOOK", to: "lookbook" },
+  { label: "LORE", to: "lore" },
+  { label: "WEARERS", to: "community" },
 ];
 
 export const tickerItems = (freeOver: string) => [
@@ -39,8 +34,39 @@ export const UGC = [
   { handle: "@obon.club", likes: "760", ratio: "3/4" }, { handle: "@zk.archive", likes: "4.6K", ratio: "1/1" },
 ];
 
-export const FOOTER_COLS = [
-  { head: "SHOP", links: ["All relics", "Drop 009", "Masks", "Figures", "Gift cards"] },
-  { head: "SHRINE", links: ["The nine oaths", "Makers", "Sizing", "Restoration fund"] },
-  { head: "CONTACT", links: ["Shipping & returns", "Track an oath", "Wholesale", "hello@zenkaii.jp"] },
+export const CONTACT_EMAIL = "hello@zenkaii.jp";
+
+// section = scroll to a home-page section (optionally pre-filtering the shop by category);
+// shop = a Shopify-hosted page resolved at request time; href = plain link.
+export type FooterLink = { label: string; section?: string; cat?: string; shop?: "shipping" | "account"; href?: string };
+
+export const FOOTER_COLS: { head: string; links: FooterLink[] }[] = [
+  {
+    head: "SHOP",
+    links: [
+      { label: "All relics", section: "shop", cat: "ALL" },
+      { label: "Drop 009", section: "drop" },
+      { label: "Masks", section: "shop", cat: "MASKS" },
+      { label: "Figures", section: "shop", cat: "FIGURES" },
+    ],
+  },
+  {
+    head: "SHRINE",
+    links: [
+      { label: "Characters", section: "foryou" },
+      { label: "The nine oaths", section: "lore" },
+      { label: "Lookbook", section: "lookbook" },
+      { label: "Wearers", section: "community" },
+      { label: "Take the oath", section: "join" },
+    ],
+  },
+  {
+    head: "CONTACT",
+    links: [
+      { label: "Shipping & returns", shop: "shipping" },
+      { label: "Track an oath", shop: "account" },
+      { label: "Wholesale", href: `mailto:${CONTACT_EMAIL}?subject=Wholesale` },
+      { label: CONTACT_EMAIL, href: `mailto:${CONTACT_EMAIL}` },
+    ],
+  },
 ];
