@@ -16,6 +16,7 @@ The home page opens like a streaming app, with characters as the "shows":
 
 | | Mobile (≤ 760px) | Desktop |
 | --- | --- | --- |
+| **Hero** | None — the carousel leads | Full-width "ten legends" banner (`public/hero/legends.webp`) with a slow zoom-in, parallax, *Wear the Legend* headline and two CTAs. Phones never download it. |
 | **For You** — character collections | One big card at a time, centre-snapped; neighbours peek in, scaled down and dimmed. Swipe, or let it auto-advance every ~5s. Each card has a relic count, corner badge (`TOP 10`, `NEW`), name, genres, a **+ / ✓ follow** button and a **▶** button. | A long rail of 3:4 posters with arrow paging and mouse drag-to-scroll. Hover lifts the poster with a coloured glow and reveals follow / ▶. |
 | **Rows** | Pick up the trail (recently viewed) · New on Zenkaii (TOP 1–3 badges) · one row per category | Same, with arrows and drag |
 | **Chrome** | Logo + two channel pills (Zenkaii, DROP 009), bottom tab bar (Search · Home · Cart with badge), floating category pill (`Tees \| Outerwear \| Masks ⌃`) | Fixed header with nav, search and cart |
