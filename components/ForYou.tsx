@@ -123,7 +123,7 @@ export function CharacterCard({ c, priority = false, compact = false }: { c: Cha
       <Link href={href} className="zk-char-link" aria-label={`${c.name} collection, ${count} relics`} draggable={false}>
         <div className="zk-char-art">
           {c.image ? (
-            <Image src={c.image.url} alt={c.image.alt} fill priority={priority} draggable={false} sizes="(max-width: 760px) 80vw, 280px" style={{ objectFit: "cover" }} />
+            <Image src={c.image.url} alt={c.image.alt} fill priority={priority} draggable={false} sizes="(max-width: 760px) 80vw, 280px" style={{ objectFit: "cover", objectPosition: "50% 25%" }} />
           ) : (
             <CharacterPlaceholder c={c} />
           )}

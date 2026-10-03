@@ -11,6 +11,11 @@ export const CHARACTER_ART: Record<string, string> = {
   "ichigo-kurosaki": "/characters/ichigo-kurosaki.webp",
   "levi-ackerman": "/characters/levi-ackerman.webp",
   "l-lawliet": "/characters/l-lawliet.webp",
+  "naruto-uzumaki": "/characters/naruto-uzumaki.webp",
+  "monkey-d-luffy": "/characters/monkey-d-luffy.webp",
+  "tanjiro-kamado": "/characters/tanjiro-kamado.webp",
+  "goku": "/characters/goku.webp",
+  "sailor-moon": "/characters/sailor-moon.webp",
 };
 
 type Seed = Omit<Character, "id" | "image" | "productIds"> & { products: string[] };
