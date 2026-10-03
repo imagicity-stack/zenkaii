@@ -72,7 +72,7 @@ export default function Shop() {
   );
 }
 
-function ProductTile({ p }: { p: Product }) {
+export function ProductTile({ p }: { p: Product }) {
   const { add, openPdp, fav, toggleFav, tilt } = useStore();
   const square = useRef<HTMLDivElement>(null);
   const open = () => openPdp(p);

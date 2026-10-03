@@ -1,53 +1,43 @@
 "use client";
 
-import type { Product, ShopLinks } from "@/lib/types";
+import type { Character, Product, ShopLinks } from "@/lib/types";
 import CartDrawer from "./CartDrawer";
-import { Community, Lookbook, Lore } from "./Editorial";
 import Effects from "./Effects";
-import FeaturedDrop from "./FeaturedDrop";
 import Footer from "./Footer";
-import Gate from "./Gate";
 import Header from "./Header";
-import Hero from "./Hero";
-import Newsletter from "./Newsletter";
+import MobileNav from "./MobileNav";
 import ProductModal from "./ProductModal";
-import Shop from "./Shop";
+import SearchOverlay from "./SearchOverlay";
 import { StoreProvider } from "./Store";
-import Ticker from "./Ticker";
 import Toast from "./Toast";
 
+// App shell shared by every storefront route; the page supplies <main>'s content.
 export default function Zenkaii({
   products,
+  characters,
   shopify,
   links,
   children,
 }: {
   products: Product[];
+  characters: Character[];
   shopify: boolean;
   links: ShopLinks;
   children?: React.ReactNode;
 }) {
   return (
-    <StoreProvider products={products} shopify={shopify}>
+    <StoreProvider products={products} characters={characters} shopify={shopify}>
       <Effects />
       <Header />
       <main id="top" className="zk-main">
-        <Hero />
-        <Ticker />
-        <FeaturedDrop />
-        <Gate variant="crimson" label="II — THE MARKET" kana="いちば" />
-        <Shop />
-        <Gate variant="ivory" label="III — THE LOOK" kana="よそおい" />
-        <Lookbook />
-        <Lore />
-        <Community />
-        <Newsletter />
+        {children}
         <Footer links={links} />
       </main>
+      <MobileNav />
+      <SearchOverlay />
       <ProductModal />
       <CartDrawer />
       <Toast />
-      {children}
     </StoreProvider>
   );
 }

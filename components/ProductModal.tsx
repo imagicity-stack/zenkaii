@@ -1,12 +1,14 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { money } from "@/lib/money";
+import { collectionPath } from "@/lib/site";
 import { useStore } from "./Store";
 
 export default function ProductModal() {
-  const { pdp: p, closePdp, add, fav, toggleFav, tilt } = useStore();
+  const { pdp: p, closePdp, add, fav, toggleFav, tilt, characters } = useStore();
   const [size, setSize] = useState<string | null>(null);
   const visual = useRef<HTMLDivElement>(null);
   const closeBtn = useRef<HTMLButtonElement>(null);
@@ -84,6 +86,19 @@ export default function ProductModal() {
             </button>
             <button className={"zk-pdp-fav" + (fav[p.id] ? " is-on" : "")} aria-pressed={!!fav[p.id]} aria-label="Favourite" onClick={() => toggleFav(p.id)}>✦</button>
           </div>
+          {(() => {
+            const from = characters.filter((c) => c.productIds.includes(p.id));
+            return from.length ? (
+              <div className="zk-pdp-chars">
+                <span>FROM</span>
+                {from.map((c) => (
+                  <Link key={c.handle} href={collectionPath(c.handle)} style={{ "--hue": c.hue } as React.CSSProperties}>
+                    {c.name}
+                  </Link>
+                ))}
+              </div>
+            ) : null;
+          })()}
           <div className="zk-specs">
             {specs.map((s) => (
               <div key={s.k}>

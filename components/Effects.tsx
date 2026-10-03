@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { CONFIG } from "@/lib/config";
 import { useStore } from "./Store";
@@ -12,6 +13,15 @@ export default function Effects() {
   const speedRef = useRef<HTMLDivElement>(null);
   const cursorRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
+  const scan = useRef<{ px: HTMLElement[]; gates: HTMLElement[] }>({ px: [], gates: [] });
+  const parallaxRef = useRef<() => void>(() => {});
+
+  // Opening a product only pushState()s /products/<handle> over the current page, so the DOM
+  // doesn't change; re-scan only when the underlying page does (home <-> character page).
+  const pathname = usePathname();
+  const page = useRef(pathname);
+  if (!pathname.startsWith("/products/")) page.current = pathname;
+  const pageKey = page.current;
 
   useEffect(() => {
     const mouse = { x: innerWidth / 2, y: innerHeight / 2 };
@@ -26,12 +36,10 @@ export default function Effects() {
     };
     addEventListener("pointermove", onMove, { passive: true });
 
-    // ---- parallax + torii gates ----
-    const pxEls = Array.from(document.querySelectorAll<HTMLElement>("[data-parallax]"));
-    const gateEls = Array.from(document.querySelectorAll<HTMLElement>("[data-gatescale]"));
+    // ---- parallax + torii gates (element lists come from the per-page scan below) ----
     const parallax = () => {
       const vh = innerHeight;
-      for (const el of pxEls) {
+      for (const el of scan.current.px) {
         const r = el.getBoundingClientRect();
         if (r.bottom < -400 || r.top > vh + 400) continue;
         const sp = (parseFloat(el.dataset.parallax || "0") || 0) * motion.k;
@@ -39,7 +47,7 @@ export default function Effects() {
         const base = el.hasAttribute("data-center") ? "translate(-50%,-50%) " : "";
         el.style.transform = base + "translate3d(0," + (-mid * sp).toFixed(1) + "px,0)";
       }
-      for (const el of gateEls) {
+      for (const el of scan.current.gates) {
         const r = el.parentElement!.getBoundingClientRect();
         const t = 1 - (r.top + r.height / 2) / (vh + r.height / 2);
         const k = Math.max(0, Math.min(1.6, t * 1.7));
@@ -60,42 +68,7 @@ export default function Effects() {
     };
     addEventListener("scroll", onScroll, { passive: true });
     addEventListener("resize", onScroll, { passive: true });
-
-    // ---- reveal + ink-wipe ----
-    const fold = innerHeight - 60;
-    const hidden: HTMLElement[] = [];
-    for (const el of Array.from(document.querySelectorAll<HTMLElement>("[data-reveal]"))) {
-      if (motion.reduced || el.getBoundingClientRect().top <= fold) continue;
-      el.style.opacity = "0";
-      el.style.transform = "translateY(46px)";
-      if (el.hasAttribute("data-wipe")) el.style.clipPath = "inset(0 100% 0 0)";
-      el.style.transition = "opacity .85s cubic-bezier(.16,1,.3,1), transform .95s cubic-bezier(.16,1,.3,1), clip-path 1.1s cubic-bezier(.16,1,.3,1)";
-      hidden.push(el);
-    }
-    const show = (el: HTMLElement) => {
-      el.style.opacity = "1";
-      el.style.transform = "translateY(0)";
-      el.style.clipPath = "inset(0 0 0 0)";
-      // Hand the element back to its stylesheet so tilt/hover transitions stay snappy.
-      setTimeout(() => {
-        el.style.transition = "";
-        el.style.transform = "";
-        el.style.clipPath = "";
-      }, 1200);
-    };
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (!e.isIntersecting) continue;
-          const el = e.target as HTMLElement;
-          const i = hidden.indexOf(el);
-          setTimeout(() => show(el), (i % 4) * 90);
-          io.unobserve(el);
-        }
-      },
-      { rootMargin: "0px 0px -12% 0px", threshold: 0.08 }
-    );
-    hidden.forEach((el) => io.observe(el));
+    parallaxRef.current = onScroll;
 
     // ---- petals + embers ----
     const c = canvasRef.current!;
@@ -187,10 +160,58 @@ export default function Effects() {
       removeEventListener("resize", onScroll);
       removeEventListener("resize", size);
       cancelAnimationFrame(raf);
+    };
+  }, [motion]);
+
+  // ---- per-page: rescan parallax/gates, and set up reveal + ink-wipe ----
+  useEffect(() => {
+    scan.current = {
+      px: Array.from(document.querySelectorAll<HTMLElement>("[data-parallax]")),
+      gates: Array.from(document.querySelectorAll<HTMLElement>("[data-gatescale]")),
+    };
+    parallaxRef.current();
+
+    const fold = innerHeight - 60;
+    const hidden: HTMLElement[] = [];
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>("[data-reveal]"))) {
+      if (motion.reduced || el.getBoundingClientRect().top <= fold) continue;
+      el.style.opacity = "0";
+      el.style.transform = "translateY(46px)";
+      if (el.hasAttribute("data-wipe")) el.style.clipPath = "inset(0 100% 0 0)";
+      el.style.transition = "opacity .85s cubic-bezier(.16,1,.3,1), transform .95s cubic-bezier(.16,1,.3,1), clip-path 1.1s cubic-bezier(.16,1,.3,1)";
+      hidden.push(el);
+    }
+    const show = (el: HTMLElement) => {
+      el.style.opacity = "1";
+      el.style.transform = "translateY(0)";
+      el.style.clipPath = "inset(0 0 0 0)";
+      // Hand the element back to its stylesheet so tilt/hover transitions stay snappy.
+      setTimeout(() => {
+        el.style.transition = "";
+        el.style.transform = "";
+        el.style.clipPath = "";
+      }, 1200);
+    };
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          const el = e.target as HTMLElement;
+          const i = hidden.indexOf(el);
+          setTimeout(() => show(el), (i % 4) * 90);
+          io.unobserve(el);
+        }
+      },
+      { rootMargin: "0px 0px -12% 0px", threshold: 0.08 }
+    );
+    hidden.forEach((el) => io.observe(el));
+
+
+    return () => {
       io.disconnect();
       hidden.forEach(show);
     };
-  }, [motion]);
+  }, [pageKey, motion.reduced]);
 
   return (
     <>

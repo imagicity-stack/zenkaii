@@ -10,11 +10,25 @@ The original design handoff (prototype, chat transcripts, assets, and its [READM
 
 ## What's implemented
 
-Every section and motion moment from the prototype:
+### Streaming-app home
+
+The home page opens like a streaming app, with characters as the "shows":
+
+| | Mobile (≤ 760px) | Desktop |
+| --- | --- | --- |
+| **For You** — character collections | One big card at a time, centre-snapped; neighbours peek in, scaled down and dimmed. Swipe, or let it auto-advance every ~5s. Each card has a relic count, corner badge (`TOP 10`, `NEW`), name, genres, a **+ / ✓ follow** button and a **▶** button. | A long rail of 3:4 posters with arrow paging and mouse drag-to-scroll. Hover lifts the poster with a coloured glow and reveals follow / ▶. |
+| **Rows** | Pick up the trail (recently viewed) · New on Zenkaii (TOP 1–3 badges) · one row per category | Same, with arrows and drag |
+| **Chrome** | Logo + two channel pills (Zenkaii, DROP 009), bottom tab bar (Search · Home · Cart with badge), floating category pill (`Tees \| Outerwear \| Masks ⌃`) | Fixed header with nav, search and cart |
+
+Tapping a character opens **`/collections/<handle>`**: a blurred-art banner with the poster, name, meta, description, **▶ Shop the collection** and **Follow**, then every relic in that collection and a "More characters" row. Search (tab bar or header) filters characters and relics live. Followed characters, favourites and recently viewed items are remembered per browser.
+
+### Kept from the original design
+
+Every section and motion moment from the prototype below the rows:
 
 | Section | Motion |
 | --- | --- |
-| Hero with blinking kitsune mask + glint sweep | Cursor-tracking mask spirit (lagged, skews with velocity) |
+| Character carousel + product rows | Cursor-tracking mask spirit (lagged, skews with velocity) |
 | Crimson ticker | Marquee that reverses direction when you scroll up and speeds up with scroll velocity |
 | Drop 009 feature + live countdown | 3D tilt tiles with parallax depth layers |
 | Torii gate chapter breaks (×2) | Gates scale up as you scroll through them |
@@ -42,12 +56,13 @@ The storefront is still one scrolling page, but the address bar stays clean:
 
 | URL | What you see |
 | --- | --- |
-| `/` | The whole site. Nav, hero and footer links scroll smoothly to their section without adding a `#hash`. |
+| `/` | The whole site. Nav, pills, tab bar and footer links scroll smoothly to their section without adding a `#hash`. |
+| `/collections/<handle>` | A character's page. Shareable, with its own title, description and share image. Nav links from here go back to the home page and scroll to the section. |
 | `/products/<handle>` | The same page with that product's modal open. Opening a tile pushes this URL, and browser back/close returns to `/` at the same scroll position. The link is shareable and has its own title, description, share image, canonical URL and `Product` structured data (price, currency, stock). |
 | `/#shop`, `/#lore`, … | Old-style links still work: they scroll to the section, then the hash is removed. |
-| `/sitemap.xml`, `/robots.txt` | Home plus every product page, for search engines. |
+| `/sitemap.xml`, `/robots.txt` | Home plus every character and product page, for search engines. |
 
-Home and product pages share one persistent layout (`app/(store)/layout.tsx`), so moving between them never reloads the page or empties the cart. Unknown product handles return a 404 and fall back to the home page.
+All storefront pages share one persistent layout (`app/(store)/layout.tsx`), so moving between them never reloads the page or empties the cart. Unknown product handles return a 404 and fall back to the home page.
 
 Footer links point at real destinations: sections, category shortcuts (hidden if the live catalogue lacks that category), Shopify's shipping policy and customer account pages when a store is connected, and email otherwise.
 
@@ -94,10 +109,32 @@ npm run dev                  # http://localhost:3000
    | Background glyph (`霊`) | Metafield `custom.glyph` (single-line text, falls back to the first character of the JP name) |
 
    Products without a photo keep the prototype's hatched placeholder with the mask watermark.
-4. **Newsletter (optional):** create a custom app with the `write_customers` Admin scope and set `SHOPIFY_ADMIN_ACCESS_TOKEN`.
-5. **Return from checkout:** in *Settings → Checkout*, point the order-status "Continue shopping" link at your Vercel domain so buyers land back on the SEALED screen.
+4. **Character collections (the For You carousel):** each character is a Shopify **collection**. Set the boolean metafield `custom.character` to `true` on the ones to show (if none are flagged, every collection except `all` / `frontpage` is used). Optional collection metafields:
+
+   | Card field | Metafield (single-line text unless noted) |
+   | --- | --- |
+   | Japanese name (`狐`) | `custom.jp_name` |
+   | Tagline (`The nine-tailed oath`) | `custom.tagline` |
+   | Genres (`Yōkai, Trickster`) | `custom.genres` (comma-separated) |
+   | Corner badge (`TOP 10`, `NEW`) | `custom.badge` |
+   | Ribbon (`NEW DROP WEEKLY`) | `custom.ribbon` |
+   | Year | `custom.year` |
+   | Carousel position | `custom.order` (integer, lowest first) |
+
+   Title, description and products come from the collection itself. Poster art comes from the collection image, or from the repo (below).
+5. **Newsletter (optional):** create a custom app with the `write_customers` Admin scope and set `SHOPIFY_ADMIN_ACCESS_TOKEN`.
+6. **Return from checkout:** in *Settings → Checkout*, point the order-status "Continue shopping" link at your Vercel domain so buyers land back on the SEALED screen.
 
 The catalogue is cached for 60 seconds (ISR), so product edits show up within a minute.
+
+### Character poster art
+
+Until art is uploaded, each character gets a generated poster (its colour, its kanji and the fox mask). To use real art:
+
+1. Add a portrait 3:4 image (e.g. 900×1200) to `public/characters/`, named after the collection handle (`kitsune.jpg`).
+2. Register it in `lib/characters.ts`: `CHARACTER_ART = { kitsune: "/characters/kitsune.jpg" }`.
+
+Repo art overrides the Shopify collection image for that handle. The mock catalogue's eight placeholder characters (Kitsune, Yūrei, Oni, Tengu, Rōnin, Raijin, Kappa, Yuki-onna) live in the same file and are replaced by your Shopify collections once a store is connected.
 
 ## Deploy to Vercel
 
@@ -110,9 +147,10 @@ The catalogue is cached for 60 seconds (ISR), so product edits show up within a 
 ```
 app/
   layout.tsx            fonts (Cinzel, Zen Kaku Gothic New, Space Mono), base metadata
-  (store)/layout.tsx    fetches products (Shopify or mock) → <Zenkaii>, persists across routes
-  (store)/page.tsx      home (empty — the layout is the page)
-  (store)/products/[handle]/page.tsx   per-product metadata + JSON-LD; the modal opens from the URL
+  (store)/layout.tsx    fetches products + characters (Shopify or mock) → app shell, persists across routes
+  (store)/page.tsx      home
+  (store)/products/[handle]/page.tsx     home + per-product metadata + JSON-LD; the modal opens from the URL
+  (store)/collections/[handle]/page.tsx  character page + metadata
   sitemap.ts, robots.ts
   globals.css           all styling + keyframes, ported from the prototype
   api/cart/route.ts     cart create/add/update/get → Storefront API
@@ -121,11 +159,20 @@ components/
   Store.tsx             client state: cart sync, drawer, URL-driven product modal, sections, toast, favourites, motion prefs
   SectionLink.tsx       hash-free smooth-scroll links
   Effects.tsx           rAF loop: cursor spirit, petals, speed lines, marquee, parallax, gates, reveals
-  Header, Hero, Ticker, FeaturedDrop, Gate, Shop, Editorial (lookbook/lore/UGC), Newsletter, Footer
+  Zenkaii.tsx           app shell: header, tab bar, search, modal, cart drawer, toast, footer
+  HomeView.tsx          home page composition
+  ForYou.tsx            character carousel (mobile snap cards / desktop poster rail) + CharacterCard
+  Rail.tsx              shared horizontal scroller: arrows, drag-to-scroll, edge fades
+  ProductRails.tsx      recently viewed / new / per-category rows + ProductPoster
+  CollectionView.tsx    /collections/<handle> page
+  MobileNav.tsx         bottom tab bar + floating category pill
+  SearchOverlay.tsx     live search over characters and relics
+  Header, Ticker, FeaturedDrop, Gate, Shop, Editorial (lookbook/lore/UGC), Newsletter, Footer
   ProductModal.tsx, CartDrawer.tsx, Toast.tsx
 lib/
   shopify.ts            Storefront + Admin GraphQL client (server only)
   mock.ts               prototype catalogue
+  characters.ts         character poster art map + placeholder characters
   config.ts             env-driven tweaks
   fx.ts                 tilt + fly-to-cart animations
   content.ts            editorial copy, nav + footer links

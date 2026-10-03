@@ -7,3 +7,5 @@ export const productPath = (handle: string) => "/products/" + encodeURIComponent
 
 export const HOME_TITLE = "ZENKAII — Spirit-forged apparel";
 export const productTitle = (name: string) => `${name} — ZENKAII`;
+export const collectionPath = (handle: string) => "/collections/" + encodeURIComponent(handle);
+export const collectionTitle = (name: string) => `${name} Collection — ZENKAII`;

@@ -1,4 +1,5 @@
-// The home page is the storefront layout itself; nothing extra to render here.
+import HomeView from "@/components/HomeView";
+
 export default function Home() {
-  return null;
+  return <HomeView />;
 }

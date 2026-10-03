@@ -46,3 +46,21 @@ export const EMPTY_CART: Cart = { id: null, checkoutUrl: null, lines: [], subtot
 
 // Shopify-hosted pages linked from the footer (empty when no store is connected).
 export type ShopLinks = { shipping?: string; account?: string };
+
+// A character collection shown in the "For You" carousel (a Shopify collection).
+export type Character = {
+  id: string;
+  handle: string;
+  name: string;
+  jp: string;
+  tagline: string;
+  description: string;
+  genres: string[];
+  year: string;
+  badge: string | null; // corner badge, e.g. "TOP 10"
+  ribbon: string | null; // bottom pill, e.g. "NEW DROP WEEKLY"
+  image: { url: string; alt: string } | null; // portrait poster, 3:4
+  hue: number; // placeholder poster colour until art is uploaded
+  glyph: string;
+  productIds: string[];
+};

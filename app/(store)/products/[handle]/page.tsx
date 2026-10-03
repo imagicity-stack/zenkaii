@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import HomeView from "@/components/HomeView";
 import { getProducts } from "@/lib/shopify";
 import { productPath, productTitle, SITE_URL } from "@/lib/site";
 
@@ -32,8 +33,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-// The modal itself is rendered by the storefront layout from the URL; this page only
-// adds structured data so search engines see a real product page.
+// The modal is rendered by the storefront shell from the URL, over the home page;
+// this page adds structured data so search engines see a real product page.
 export default async function ProductPage({ params }: Props) {
   const p = await findProduct(params);
   if (!p) notFound();
@@ -53,5 +54,10 @@ export default async function ProductPage({ params }: Props) {
       availability: p.available ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
     },
   };
-  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />;
+  return (
+    <>
+      <HomeView />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
+    </>
+  );
 }

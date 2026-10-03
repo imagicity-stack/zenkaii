@@ -1,15 +1,10 @@
 export const NAV_LINKS = [
+  { label: "FOR YOU", to: "foryou" },
   { label: "DROP", to: "drop" },
   { label: "SHOP", to: "shop" },
   { label: "LOOKBOOK", to: "lookbook" },
   { label: "LORE", to: "lore" },
   { label: "WEARERS", to: "community" },
-];
-
-export const HERO_STATS = [
-  { v: "009", k: "DROPS SEALED" },
-  { v: "14.2K", k: "MASKED" },
-  { v: "1/1", k: "NEVER RESTRUCK" },
 ];
 
 export const tickerItems = (freeOver: string) => [
@@ -58,6 +53,7 @@ export const FOOTER_COLS: { head: string; links: FooterLink[] }[] = [
   {
     head: "SHRINE",
     links: [
+      { label: "Characters", section: "foryou" },
       { label: "The nine oaths", section: "lore" },
       { label: "Lookbook", section: "lookbook" },
       { label: "Wearers", section: "community" },
