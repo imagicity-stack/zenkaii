@@ -134,7 +134,7 @@ Until art is uploaded, each character gets a generated poster (its colour, its k
 1. Add a portrait 3:4 image (e.g. 900×1200) to `public/characters/`, named after the collection handle (`kitsune.jpg`).
 2. Register it in `lib/characters.ts`: `CHARACTER_ART = { kitsune: "/characters/kitsune.jpg" }`.
 
-Repo art overrides the Shopify collection image for that handle. The mock catalogue's eight placeholder characters (Kitsune, Yūrei, Oni, Tengu, Rōnin, Raijin, Kappa, Yuki-onna) live in the same file and are replaced by your Shopify collections once a store is connected.
+Repo art overrides the Shopify collection image for that handle. The ten launch characters (Gojo Satoru, Edward Elric, Ichigo Kurosaki, Levi Ackerman, L Lawliet, Naruto Uzumaki, Monkey D. Luffy, Tanjiro Kamado, Goku, Sailor Moon) live in the same file for mock mode, including their taglines, badges and which mock products belong to each; your Shopify collections replace them once a store is connected. Art is cropped from the uploaded posters to just the illustration (no cream border or lettering), since the card prints the name itself.
 
 ## Deploy to Vercel
 
